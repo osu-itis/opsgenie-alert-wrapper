@@ -1,0 +1,86 @@
+from opsgenie import OpsGenie
+from opsgenie.config import Configuration as OpsGenieConfiguration
+from opsgenie.alert.requests import CreateAlertRequest
+from opsgenie.errors import OpsGenieError
+from shellpython.helpers import Dir
+from shellpython import config as shellpyconfig
+import json
+import os
+import sys
+import hashlib
+
+# initialize environment variables
+OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
+ALERT_MESSAGE = os.getenv('ALERT_MESSAGE', 'default')
+ALERT_SOURCE = os.getenv('ALERT_SOURCE', 'default')
+ALERT_DESCRIPTION = os.getenv('ALERT_DESCRIPTION', 'default')
+ALERT_TEAMS = os.getenv('ALERT_TEAMS', 'default').split(',')
+TARGET_SCRIPT_HOME = os.getenv('TARGET_SCRIPT_HOME', os.getenv('HOME'))
+TARGET_RUN_COMMAND = os.getenv('TARGET_RUN_COMMAND', 'ls -la')
+ALERTFILE_DIR = os.getenv('ALERTFILE_DIR', '/tmp')
+
+# disable shellpy colorization
+shellpyconfig.COLORAMA_ENABLED = False
+
+# configure opsgenie api client
+opsgenie = OpsGenie(OpsGenieConfiguration(apikey=OPSGENIE_API_KEY))
+
+
+def main():
+    with Dir(TARGET_SCRIPT_HOME):
+        print "cd'ing into: {}".format(TARGET_SCRIPT_HOME)
+        print "running cmd: {}".format(TARGET_RUN_COMMAND)
+        try:
+            result = `{TARGET_RUN_COMMAND}`
+        except NonZeroReturnCodeError as e:
+            handle_failure(e)
+            sys.exit(1)
+
+        print "return code:", result.returncode
+        alertfile = get_alertfile_name()
+        if os.path.isfile(alertfile):
+            print "stale alertfile {} found, deleting it...".format(alertfile)
+            os.remove(alertfile)
+
+
+def get_alertfile_name():
+    hash_object = hashlib.md5(ALERT_SOURCE.encode())
+    return os.path.join(ALERTFILE_DIR, "{}.alert".format(hash_object.hexdigest()))
+
+
+def handle_failure(result_error):
+    print result_error
+
+    alertfile = get_alertfile_name()
+    if os.path.isfile(alertfile):
+        # alertfile already exists, no action is required
+        print "alertfile {} already exists".format(alertfile)
+    else:
+        # alertfile not found, create a new alert in opsgenie
+        print "creating opsgenie alert..."
+        alert = create_opsgenie_alert(result_error)
+        print "writing alertfile {}...".format(alertfile)
+        with open(alertfile, 'w') as af:
+            json.dump({'alert_id': alert.alert_id, 'message': alert.message, 'status': alert.status, 'code': alert.code }, af)
+
+
+def create_opsgenie_alert(result_error):
+    try:
+        request = CreateAlertRequest(
+                            message=ALERT_MESSAGE,
+                            description="{}\n{}".format(ALERT_DESCRIPTION, result_error),
+                            source=ALERT_SOURCE,
+                            teams=ALERT_TEAMS)
+        response = opsgenie.alert.create_alert(request)
+        print "  message:", (response.message)
+        print "  alert id:", (response.alert_id)
+        print "  status:", (response.status)
+        print "  code:", (response.code)
+        return response
+    except OpsGenieError as err:
+        print err.message
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
