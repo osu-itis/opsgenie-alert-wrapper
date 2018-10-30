@@ -4,6 +4,7 @@ A python wrapper that creates an OpsGenie alert when a script fails. Wrapped scr
 
 ## Requirements
 
+* Python 2.7.x
 * `shellpy >= 0.5.0`
 * `opsgenie-sdk >= 0.2.1`
 

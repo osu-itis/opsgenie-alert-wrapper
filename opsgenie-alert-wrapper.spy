@@ -1,13 +1,15 @@
-from opsgenie import OpsGenie
-from opsgenie.config import Configuration as OpsGenieConfiguration
-from opsgenie.alert.requests import CreateAlertRequest
-from opsgenie.errors import OpsGenieError
+from opsgenie.swagger_client import AlertApi
+from opsgenie.swagger_client import configuration
+from opsgenie.swagger_client.models import CreateAlertRequest, TeamRecipient
+from opsgenie.swagger_client.rest import ApiException
 from shellpython.helpers import Dir
 from shellpython import config as shellpyconfig
 import json
 import os
 import sys
 import hashlib
+import pprint
+pp = pprint.PrettyPrinter(indent=2)
 
 # initialize environment variables
 OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
@@ -23,7 +25,8 @@ ALERTFILE_DIR = os.getenv('ALERTFILE_DIR', '/tmp')
 shellpyconfig.COLORAMA_ENABLED = False
 
 # configure opsgenie api client
-opsgenie = OpsGenie(OpsGenieConfiguration(apikey=OPSGENIE_API_KEY))
+configuration.api_key['Authorization'] = OPSGENIE_API_KEY
+configuration.api_key_prefix['Authorization'] = 'GenieKey'
 
 
 def main():
@@ -59,27 +62,72 @@ def handle_failure(result_error):
         # alertfile not found, create a new alert in opsgenie
         print "creating opsgenie alert..."
         alert = create_opsgenie_alert(result_error)
+
         print "writing alertfile {}...".format(alertfile)
         with open(alertfile, 'w') as af:
-            json.dump({'alert_id': alert.alert_id, 'message': alert.message, 'status': alert.status, 'code': alert.code }, af)
+            json.dump(alert, af)
+
+
+def get_request_status(request_id):
+    try:
+        response = AlertApi().get_request_status(request_id=request_id)
+        print('data.alert_id: {}'.format(response.data.alert_id))
+        print('data.is_success: {}'.format(response.data.is_success))
+    except ApiException as err:
+        if err.status == 404:
+            return False
+        print('Exception when calling AlertApi->get_request_status: {}\n'.format(err))
+        sys.exit(1)
 
 
 def create_opsgenie_alert(result_error):
+    teams = map(lambda t: TeamRecipient(name=t), ALERT_TEAMS)
+
+    body = CreateAlertRequest(
+        message=ALERT_MESSAGE,
+        description="{}\n{}".format(ALERT_DESCRIPTION, result_error),
+        source=ALERT_SOURCE,
+        teams=teams)
+
+    # create request for a new alert
+    request_id = ''
     try:
-        request = CreateAlertRequest(
-                            message=ALERT_MESSAGE,
-                            description="{}\n{}".format(ALERT_DESCRIPTION, result_error),
-                            source=ALERT_SOURCE,
-                            teams=ALERT_TEAMS)
-        response = opsgenie.alert.create_alert(request)
-        print "  message:", (response.message)
-        print "  alert id:", (response.alert_id)
-        print "  status:", (response.status)
-        print "  code:", (response.code)
-        return response
-    except OpsGenieError as err:
-        print err.message
+        response = AlertApi().create_alert(body=body)
+        request_id = response.request_id
+        print('request id: {}'.format(response.request_id))
+        print('took: {}'.format(response.took))
+        print('result: {}'.format(response.result))
+    except ApiException as err:
+        print('Exception when calling AlertApi->create_alert: {}\n'.format(err))
         sys.exit(1)
+
+    # query request status until an alert is created
+    alert_id = ''
+    while alert_id == '':
+        try:
+            response = AlertApi().get_request_status(request_id=request_id)
+            alert_id = response.data.alert_id
+        except ApiException as err:
+            if err.status == 404:
+                continue
+            print('Exception when calling AlertApi->get_request_status: {}\n'.format(err))
+            sys.exit(1)
+
+    # get alert details
+    try:
+        response = AlertApi().get_alert(identifier=alert_id, identifier_type='id')
+    except ApiException as err:
+        print('Exception when calling AlertApi->get_alert: {}\n'.format(err))
+        sys.exit(1)
+
+    return {
+        'alert_id': response.data.id,
+        'message': response.data.message,
+        'status': response.data.status,
+        'created_at': response.data.created_at.strftime('%Y-%m-%d %H:%M:%S %z'),
+        'source': response.data.source,
+        'description': response.data.description
+    }
 
 
 if __name__ == "__main__":
