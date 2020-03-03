@@ -1,40 +1,51 @@
-from opsgenie.swagger_client import AlertApi
-from opsgenie.swagger_client import configuration
-from opsgenie.swagger_client.models import CreateAlertRequest, TeamRecipient
-from opsgenie.swagger_client.rest import ApiException
 from shellpython.helpers import Dir
 from shellpython import config as shellpyconfig
+from opsgenie_sdk import AlertApi
+from opsgenie_sdk import Configuration
+from opsgenie_sdk import CreateAlertPayload
+from opsgenie_sdk.models.team_recipient import TeamRecipient
+from opsgenie_sdk.rest import ApiException
+import opsgenie_sdk
+import yaml
 import json
 import os
 import sys
 import hashlib
+import collections
 import pprint
+
 pp = pprint.PrettyPrinter(indent=2)
 
-# initialize environment variables
-OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
-ALERT_MESSAGE = os.getenv('ALERT_MESSAGE', 'default')
-ALERT_SOURCE = os.getenv('ALERT_SOURCE', 'default')
-ALERT_DESCRIPTION = os.getenv('ALERT_DESCRIPTION', 'default')
-ALERT_TEAMS = os.getenv('ALERT_TEAMS', 'default').split(',')
-TARGET_SCRIPT_HOME = os.getenv('TARGET_SCRIPT_HOME', os.getenv('HOME'))
-TARGET_RUN_COMMAND = os.getenv('TARGET_RUN_COMMAND', 'ls -la')
-ALERTFILE_DIR = os.getenv('ALERTFILE_DIR', '/tmp')
+#create AlertApi object
+configuration = opsgenie_sdk.Configuration()
+api_instance = opsgenie_sdk.AlertApi(opsgenie_sdk.ApiClient(configuration))
+
+# initialize script config
+with open("wrapper_config.yml", "r") as config_file:
+    wrapper_config = yaml.load(config_file)
+
+opsgenie_api_key = wrapper_config["opsgenie_api_key"]
+alert_message = wrapper_config["alert_message"]
+alert_source = wrapper_config["alert_source"]
+alert_description = wrapper_config["alert_description"]
+target_script_home = wrapper_config["target_script_home"]
+target_run_command = wrapper_config["target_run_command"]
+alertfile_dir = wrapper_config["alertfile_dir"]
 
 # disable shellpy colorization
 shellpyconfig.COLORAMA_ENABLED = False
 
 # configure opsgenie api client
-configuration.api_key['Authorization'] = OPSGENIE_API_KEY
+configuration.api_key['Authorization'] = opsgenie_api_key
 configuration.api_key_prefix['Authorization'] = 'GenieKey'
 
 
 def main():
-    with Dir(TARGET_SCRIPT_HOME):
-        print "cd'ing into: {}".format(TARGET_SCRIPT_HOME)
-        print "running cmd: {}".format(TARGET_RUN_COMMAND)
+    with Dir(target_script_home):
+        print "cd'ing into: {}".format(target_script_home)
+        print "running cmd: {}".format(target_run_command)
         try:
-            result = `{TARGET_RUN_COMMAND}`
+            result = `{target_run_command}`
         except NonZeroReturnCodeError as e:
             handle_failure(e)
             sys.exit(1)
@@ -47,8 +58,8 @@ def main():
 
 
 def get_alertfile_name():
-    hash_object = hashlib.md5(ALERT_SOURCE.encode())
-    return os.path.join(ALERTFILE_DIR, "{}.alert".format(hash_object.hexdigest()))
+    hash_object = hashlib.md5(alert_source.encode())
+    return os.path.join(alertfile_dir, "{}.alert".format(hash_object.hexdigest()))
 
 
 def handle_failure(result_error):
@@ -81,18 +92,27 @@ def get_request_status(request_id):
 
 
 def create_opsgenie_alert(result_error):
-    teams = map(lambda t: TeamRecipient(name=t), ALERT_TEAMS)
+    #create responders list
+    responders = []
+    for team in wrapper_config["alert_teams"]:
+        alert_team = {}
+        alert_team["name"] = team["name"]
+        alert_team["type"] = team["type"]
+        responders.append(alert_team)
 
-    body = CreateAlertRequest(
-        message=ALERT_MESSAGE,
-        description="{}\n{}".format(ALERT_DESCRIPTION, result_error),
-        source=ALERT_SOURCE,
-        teams=teams)
+    body = CreateAlertPayload(
+        message=alert_message,
+        description="{}\n{}".format(alert_description, result_error),
+        source=alert_source,
+        responders=responders
+        )
+
+    print body
 
     # create request for a new alert
     request_id = ''
     try:
-        response = AlertApi().create_alert(body=body)
+        response = AlertApi().create_alert(create_alert_payload=body)
         request_id = response.request_id
         print('request id: {}'.format(response.request_id))
         print('took: {}'.format(response.took))

@@ -1,0 +1,14 @@
+---
+opsgenie_api_key: 72f9bec0-afcc-43cd-b1c7-f4195ff7d02a
+alertfile_dir: "/tmp"
+target_run_command: 'false'
+alert_source: stacybrock
+target_script_home: "/tmp"
+alert_description: test alert - disregard
+alert_message: This is a test of the OpsGenie alert wrapper system
+alert_teams:
+  - name: itis_sig_stacytesting
+    type: team
+  - name: foobar
+    type: user
+
