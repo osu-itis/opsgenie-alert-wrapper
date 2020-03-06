@@ -14,7 +14,6 @@ A python wrapper that creates an OpsGenie alert when a script fails. Wrapped scr
 Configuration is performed via yaml config file:
 
 ```
-opsgenie_api_key - (required) OpsGenie API key
 alert_message - string to send as alert message
 alert_source - string to send as alert source
 alert_description - string to send as alert description
@@ -23,6 +22,8 @@ target_script_home - path to target script's dir
 target_run_command - command to run
 alertfile_dir - path to dir for storing .alert files
 ```
+
+The Opsgenie API key must be provided as an environment variable ```OPSGENIE_API_KEY```
 
 ## Usage
 
@@ -37,7 +38,6 @@ Say we have a ruby script called `checklogin.rb` that attempts to login to a sys
 Sample yaml config:
 ```
 ---
-opsgenie_api_key: abc123-ffff
 alertfile_dir: "/tmp"
 target_run_command: 'ruby checklogin.rb'
 alert_source: checklogin.rb
