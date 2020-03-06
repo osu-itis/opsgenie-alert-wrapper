@@ -23,7 +23,7 @@ target_run_command - command to run
 alertfile_dir - path to dir for storing .alert files
 ```
 
-The Opsgenie API key must be provided as an environment variable ```OPSGENIE_API_KEY```
+The Opsgenie API key must be provided as environment variable: ```OPSGENIE_API_KEY```
 
 ## Usage
 
@@ -53,4 +53,4 @@ alert_teams:
 
 ## Jenkins
 
-`opsgenie-alert-wrapper` works well when executed via Jenkins jobs. Use the [Config File Provider Plugin](https://plugins.jenkins.io/config-file-provider/) to provide script config vars on a per-job basis.
+`opsgenie-alert-wrapper` works well when executed via Jenkins jobs. Use the [Config File Provider Plugin](https://plugins.jenkins.io/config-file-provider/) to provide script config vars on a per-job basis. Secure credentials such as the API key are provided by the [Credentials Binding Plugin](https://plugins.jenkins.io/credentials-binding).
