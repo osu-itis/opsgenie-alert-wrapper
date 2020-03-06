@@ -11,12 +11,11 @@ import json
 import os
 import sys
 import hashlib
-import collections
 import pprint
 
 pp = pprint.PrettyPrinter(indent=2)
 
-#create AlertApi object
+# create AlertApi object
 configuration = opsgenie_sdk.Configuration()
 api_instance = opsgenie_sdk.AlertApi(opsgenie_sdk.ApiClient(configuration))
 
@@ -24,7 +23,6 @@ api_instance = opsgenie_sdk.AlertApi(opsgenie_sdk.ApiClient(configuration))
 with open("wrapper_config.yml", "r") as config_file:
     wrapper_config = yaml.load(config_file)
 
-opsgenie_api_key = wrapper_config["opsgenie_api_key"]
 alert_message = wrapper_config["alert_message"]
 alert_source = wrapper_config["alert_source"]
 alert_description = wrapper_config["alert_description"]
@@ -35,8 +33,11 @@ alertfile_dir = wrapper_config["alertfile_dir"]
 # disable shellpy colorization
 shellpyconfig.COLORAMA_ENABLED = False
 
+# initialize secure credentials
+OPSGENIE_API_KEY = os.getenv('OPSGENIE_API_KEY')
+
 # configure opsgenie api client
-configuration.api_key['Authorization'] = opsgenie_api_key
+configuration.api_key['Authorization'] = OPSGENIE_API_KEY
 configuration.api_key_prefix['Authorization'] = 'GenieKey'
 
 
@@ -92,7 +93,7 @@ def get_request_status(request_id):
 
 
 def create_opsgenie_alert(result_error):
-    #create responders list
+    # create responders list
     responders = []
     for team in wrapper_config["alert_teams"]:
         alert_team = {}
