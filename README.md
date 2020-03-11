@@ -6,22 +6,24 @@ A python wrapper that creates an OpsGenie alert when a script fails. Wrapped scr
 
 * Python 2.7.x
 * `shellpy >= 0.5.0`
-* `opsgenie-sdk >= 0.2.1`
+* `opsgenie-sdk >= 2.0.3`
+* `pyyaml >= 5.3`
 
 ## Configuration
 
-Configuration is performed via environment variables:
+Configuration is performed via yaml config file:
 
 ```
-OPSGENIE_API_KEY - (required) OpsGenie API key
-ALERT_MESSAGE - string to send as alert message
-ALERT_SOURCE - string to send as alert source
-ALERT_DESCRIPTION - string to send as alert description
-ALERT_TEAMS - comma-separated list of teams to assign to alert
-TARGET_SCRIPT_HOME - path to target script's dir
-TARGET_RUN_COMMAND - command to run
-ALERTFILE_DIR - path to dir for storing .alert files
+alert_message - string to send as alert message
+alert_source - string to send as alert source
+alert_description - string to send as alert description
+alert_teams - yaml formatted array of team objects to assign to alert (req. name, type)
+target_script_home - path to target script's dir
+target_run_command - command to run
+alertfile_dir - path to dir for storing .alert files
 ```
+
+The Opsgenie API key must be provided as environment variable: ```OPSGENIE_API_KEY```
 
 ## Usage
 
@@ -33,18 +35,22 @@ $ shellpy opsgenie-alert-wrapper.spy
 
 Say we have a ruby script called `checklogin.rb` that attempts to login to a system and returns 0 on success and 1 on failure. The script is located in `/opt/scripts/monitor/`.
 
-Sample env config:
+Sample yaml config:
 ```
-OPSGENIE_API_KEY=xxxxxxxxxxx
-ALERT_MESSAGE=checklogin failed
-ALERT_SOURCE=checklogin.rb
-ALERT_DESCRIPTION=login to somehost.edu has failed
-ALERT_TEAMS=someteam
-TARGET_SCRIPT_HOME=/opt/scripts/monitor
-TARGET_RUN_COMMAND=ruby checklogin.rb
-ALERTFILE_DIR=/tmp
+---
+alertfile_dir: "/tmp"
+target_run_command: 'ruby checklogin.rb'
+alert_source: checklogin.rb
+target_script_home: "/opt/scripts/monitor"
+alert_description: checklogin script failed
+alert_message: Login to somehost.edu has failed
+alert_teams:
+  - name: someteam
+    type: team
+  - name: foobar
+    type: user
 ```
 
 ## Jenkins
 
-`opsgenie-alert-wrapper` works well when executed via Jenkins jobs. Use the [EnvInject Plugin](https://wiki.jenkins-ci.org/display/JENKINS/EnvInject+Plugin) to define environment vars on a per-job basis.
+`opsgenie-alert-wrapper` works well when executed via Jenkins jobs. Use the [Config File Provider Plugin](https://plugins.jenkins.io/config-file-provider/) to provide script config vars on a per-job basis. Secure credentials such as the API key are provided by the [Credentials Binding Plugin](https://plugins.jenkins.io/credentials-binding).
