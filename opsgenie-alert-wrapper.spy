@@ -52,7 +52,7 @@ def main():
             handle_failure(e)
             sys.exit(1)
 
-        print("return code:", result.returncode)
+        print(f"return code: {result.returncode}")
         alertfile = get_alertfile_name()
         if os.path.isfile(alertfile):
             print(f"stale alertfile {alertfile} found, deleting it...")
