@@ -12,6 +12,7 @@ import os
 import sys
 import hashlib
 import pprint
+import subprocess
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -46,12 +47,12 @@ def main():
         print(f"cd'ing into: {target_script_home}")
         print(f"running cmd: {target_run_command}")
         try:
-            result = `{target_run_command}`
+            result = `subprocess.call(target_run_command, shell=True)`
         except NonZeroReturnCodeError as e:
             handle_failure(e)
             sys.exit(1)
 
-        print "return code:", result.returncode
+        print("return code:", result.returncode)
         alertfile = get_alertfile_name()
         if os.path.isfile(alertfile):
             print(f"stale alertfile {alertfile} found, deleting it...")
