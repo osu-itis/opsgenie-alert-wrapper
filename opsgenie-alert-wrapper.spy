@@ -47,7 +47,8 @@ def main():
         print(f"cd'ing into: {target_script_home}")
         print(f"running cmd: {target_run_command}")
         try:
-            result = `subprocess.call(target_run_command, shell=True)`
+            result = {target_run_command}
+            print(result)
         except NonZeroReturnCodeError as e:
             handle_failure(e)
             sys.exit(1)
