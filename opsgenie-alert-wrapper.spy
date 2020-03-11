@@ -47,7 +47,7 @@ def main():
         print(f"cd'ing into: {target_script_home}")
         print(f"running cmd: {target_run_command}")
         try:
-            result = {target_run_command}
+            result = `{target_run_command}`
             print(result)
         except NonZeroReturnCodeError as e:
             handle_failure(e)
