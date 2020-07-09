@@ -47,7 +47,6 @@ def main():
         print(f"running cmd: {target_run_command}")
         try:
             result = `{target_run_command}`
-            print(result)
         except NonZeroReturnCodeError as e:
             handle_failure(e)
             sys.exit(1)
