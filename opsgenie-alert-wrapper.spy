@@ -21,7 +21,7 @@ api_instance = opsgenie_sdk.AlertApi(opsgenie_sdk.ApiClient(configuration))
 
 # initialize script config
 with open("wrapper_config.yml", "r") as config_file:
-    wrapper_config = yaml.load(config_file)
+    wrapper_config = yaml.load(config_file, Loader=yaml.FullLoader)
 
 alert_message = wrapper_config["alert_message"]
 alert_source = wrapper_config["alert_source"]
