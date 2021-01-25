@@ -21,7 +21,7 @@ api_instance = opsgenie_sdk.AlertApi(opsgenie_sdk.ApiClient(configuration))
 
 # initialize script config
 with open("wrapper_config.yml", "r") as config_file:
-    wrapper_config = yaml.load(config_file)
+    wrapper_config = yaml.load(config_file, Loader=yaml.FullLoader)
 
 alert_message = wrapper_config["alert_message"]
 alert_source = wrapper_config["alert_source"]
@@ -43,39 +43,39 @@ configuration.api_key_prefix['Authorization'] = 'GenieKey'
 
 def main():
     with Dir(target_script_home):
-        print "cd'ing into: {}".format(target_script_home)
-        print "running cmd: {}".format(target_run_command)
+        print(f"cd'ing into: {target_script_home}")
+        print(f"running cmd: {target_run_command}")
         try:
             result = `{target_run_command}`
         except NonZeroReturnCodeError as e:
             handle_failure(e)
             sys.exit(1)
 
-        print "return code:", result.returncode
+        print(f"return code: {result.returncode}")
         alertfile = get_alertfile_name()
         if os.path.isfile(alertfile):
-            print "stale alertfile {} found, deleting it...".format(alertfile)
+            print(f"stale alertfile {alertfile} found, deleting it...")
             os.remove(alertfile)
 
 
 def get_alertfile_name():
     hash_object = hashlib.md5(alert_source.encode())
-    return os.path.join(alertfile_dir, "{}.alert".format(hash_object.hexdigest()))
+    return os.path.join(alertfile_dir, f"{hash_object.hexdigest()}.alert")
 
 
 def handle_failure(result_error):
-    print result_error
+    print(result_error)
 
     alertfile = get_alertfile_name()
     if os.path.isfile(alertfile):
         # alertfile already exists, no action is required
-        print "alertfile {} already exists".format(alertfile)
+        print(f"alertfile {alertfile} already exists")
     else:
         # alertfile not found, create a new alert in opsgenie
-        print "creating opsgenie alert..."
+        print("creating opsgenie alert...")
         alert = create_opsgenie_alert(result_error)
 
-        print "writing alertfile {}...".format(alertfile)
+        print(f"writing alertfile {alertfile}...")
         with open(alertfile, 'w') as af:
             json.dump(alert, af)
 
@@ -83,12 +83,12 @@ def handle_failure(result_error):
 def get_request_status(request_id):
     try:
         response = AlertApi().get_request_status(request_id=request_id)
-        print('data.alert_id: {}'.format(response.data.alert_id))
-        print('data.is_success: {}'.format(response.data.is_success))
+        print(f'data.alert_id: {response.data.alert_id}')
+        print(f'data.is_success: {response.data.is_success}')
     except ApiException as err:
         if err.status == 404:
             return False
-        print('Exception when calling AlertApi->get_request_status: {}\n'.format(err))
+        print(f'Exception when calling AlertApi->get_request_status: {err}\n')
         sys.exit(1)
 
 
@@ -103,23 +103,23 @@ def create_opsgenie_alert(result_error):
 
     body = CreateAlertPayload(
         message=alert_message,
-        description="{}\n{}".format(alert_description, result_error),
+        description=f"{alert_description}\n{result_error}",
         source=alert_source,
         responders=responders
         )
 
-    print body
+    print(body)
 
     # create request for a new alert
     request_id = ''
     try:
         response = AlertApi().create_alert(create_alert_payload=body)
         request_id = response.request_id
-        print('request id: {}'.format(response.request_id))
-        print('took: {}'.format(response.took))
-        print('result: {}'.format(response.result))
+        print(f'request id: {response.request_id}')
+        print(f'took: {response.took}')
+        print(f'result: {response.result}')
     except ApiException as err:
-        print('Exception when calling AlertApi->create_alert: {}\n'.format(err))
+        print(f'Exception when calling AlertApi->create_alert: {err}\n')
         sys.exit(1)
 
     # query request status until an alert is created
@@ -131,14 +131,14 @@ def create_opsgenie_alert(result_error):
         except ApiException as err:
             if err.status == 404:
                 continue
-            print('Exception when calling AlertApi->get_request_status: {}\n'.format(err))
+            print(f'Exception when calling AlertApi->get_request_status: {err}\n')
             sys.exit(1)
 
     # get alert details
     try:
         response = AlertApi().get_alert(identifier=alert_id, identifier_type='id')
     except ApiException as err:
-        print('Exception when calling AlertApi->get_alert: {}\n'.format(err))
+        print(f'Exception when calling AlertApi->get_alert: {err}\n')
         sys.exit(1)
 
     return {

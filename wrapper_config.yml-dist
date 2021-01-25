@@ -1,0 +1,12 @@
+---
+alertfile_dir: "/tmp"
+target_run_command: "some_script.sh"
+alert_source: "changeme"
+target_script_home: "/path/to/somescript"
+alert_description: "change this longer description of issue"
+alert_message: "change this alert subject line"
+alert_teams:
+  - name: team_name
+    type: team
+  - name: user_name
+    type: user
